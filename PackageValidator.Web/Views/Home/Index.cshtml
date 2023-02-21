@@ -1,0 +1,13 @@
+﻿@using (Html.BeginForm("Validate", "Home", FormMethod.Post, new {enctype = "multipart/form-data"}))
+{
+
+  <div>
+    @Html.TextBox("file", "", new {type = "file"}) <br/>
+    
+    <div style="margin-top:40px">
+        <input type="submit" value="Submit" class="btn btn-primary"/>
+    </div>
+
+  </div>
+
+}

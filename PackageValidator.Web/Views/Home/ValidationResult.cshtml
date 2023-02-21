@@ -1,0 +1,30 @@
+﻿@model PackageValidator.Web.Models.ValidationResult
+
+@if ( Model.ValidationErrors.Any() )
+{
+
+  <img src="~/images/Error.png" class="result-icon"/>
+  <h1 style="color: red">Error validating file @Model.FileName</h1>
+  <table>
+    @foreach (var error in Model.ValidationErrors)
+    {
+      <tr>
+        <td style="width: 200px">
+          <span>
+            @error.ErrorType
+          </span>
+        </td>
+        <td>
+          <span>
+            @error.Message
+          </span>
+        </td>
+      </tr>
+    }
+  </table>
+}
+else
+{
+  <img src="~/images/Success.png" class="result-icon"/>
+  <h1 style="color: green">@Model.FileName is valid</h1>
+}

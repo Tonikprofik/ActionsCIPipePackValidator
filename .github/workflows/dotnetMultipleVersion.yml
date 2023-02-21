@@ -1,0 +1,85 @@
+name: .NET
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+  
+    strategy:
+     matrix:
+      os: [windows-2019]
+          
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+      
+    - name: Setup .NET Core 2.1	
+      uses: actions/setup-dotnet@v3	
+      with:	
+       dotnet-version: '2.1.x'
+       
+    - name: setup-msbuild
+      uses: microsoft/setup-msbuild@v1.1
+    
+    - name: Setup NuGet.exe for use with actions
+      uses: NuGet/setup-nuget@v1.0.7
+      
+    - name: restore with nuget
+      run: nuget restore PackageValidator\PackageValidator.sln
+      
+    - name: .NET Info
+      run: dotnet --info
+    - name: .Net Version
+      run: dotnet --version
+      
+    - name: Build  release
+      run: msbuild PackageValidator\PackageValidator.sln -t:rebuild -property:Configuration=Release    
+      
+    - name: Tests
+      run: dotnet test --no-build --verbosity normal
+
+
+  container-build-push:
+    runs-on: windows-2019
+
+    steps:
+      - name: Azure Container Registry Login
+        uses: Azure/docker-login@v1
+        with:
+          login-server: ${{secrets.REGISTRY_USERNAME}}.azurecr.io
+          username: ${{secrets.REGISTRY_USERNAME}}
+          password: ${{secrets.REGISTRY_PASSWORD}}
+      
+      - uses: actions/checkout@v3
+
+
+      - name: Build Push container to ACR    
+        run: |
+          docker build --file=PackageValidator.Web/Dockerfile -t ${{secrets.REGISTRY_USERNAME}}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ github.sha }} .
+          docker push ${{secrets.REGISTRY_USERNAME}}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ github.sha }}
+          
+          docker build --file=PackageValidator.Api/Dockerfile -t ${{secrets.REGISTRY_USERNAME}}.azurecr.io/${{ secrets.IMAGE_API }}:${{ github.sha }} .
+          docker push ${{secrets.REGISTRY_USERNAME}}.azurecr.io/${{ secrets.IMAGE_API }}:${{ github.sha }}
+
+      # for webapp/deploy uncomment
+      - name: Azure Login Service Principal Authentication
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy Api
+        uses: azure/webapps-deploy@v2
+        with: 
+          app-name: packagevalidatorapi2022
+          images: '${{secrets.REGISTRY_USERNAME}}.azurecr.io/${{ secrets.IMAGE_API }}:${{ github.sha }}'
+      
+      - name: Deploy Web
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: packagevalidatorweb
+          images: '${{secrets.REGISTRY_USERNAME}}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ github.sha }}'     
+    
+   
